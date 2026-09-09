@@ -29,5 +29,18 @@ Live read-only validation on 2026-09-08 received a state frame from a physical
 Serin controller after Wi-Fi commissioning. Both direct target selection and
 private configuration worked. The controller reported CN105 disconnected;
 the CLI returned exit 2 and null equipment values. No application commands
-were sent. Connected heat-pump telemetry and runtime firmware identity remain
-unverified. Device identity and network details belong in private home-config.
+were sent. A later allowlisted deviceInfo read confirmed an M5Stack NanoC6 running
+v0.2.5 (ESP-IDF v5.5.4). Connected heat-pump telemetry remains unverified. Device identity and network details belong in private home-config.
+
+
+## Identity and discovery
+
+Firmware sends `type: deviceInfo` on connection, including Wi-Fi station `mac`,
+`board`, `fw`, `idf`, `ip`, and `hostname`. `inspect` exposes only these fields.
+For configured MACs, status waits for both state and matching deviceInfo on the
+same connection, regardless of message order. Room/name metadata comes from
+private inventory, not firmware. DNS and saved IPs are locators, not identity.
+
+Discovery only accepts the registered MAC; it never sends `cmd` messages, changes
+Wi-Fi, or updates inventory. Explicit subnet scans are limited to RFC1918 IPv4
+ranges no larger than /24. Ordinary status never initiates a subnet scan.

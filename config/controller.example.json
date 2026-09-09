@@ -1,3 +1,19 @@
 {
-  "host": "serin-example.local"
+  "version": 1,
+  "rooms": [
+    {
+      "id": "living-room",
+      "name": "Living Room"
+    }
+  ],
+  "devices": [
+    {
+      "id": "serin-demo",
+      "name": "Living Room Mini-Split",
+      "room_id": "living-room",
+      "host": "192.0.2.10",
+      "hostname": "serin-demo.local",
+      "mac": "02:00:00:00:00:10"
+    }
+  ]
 }

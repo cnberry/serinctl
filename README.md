@@ -17,7 +17,8 @@ equipment state.
 
 - `status` reads one equipment snapshot from the HomeKit firmware's `/ws` stream.
 - `doctor` performs the same read to check controller and CN105 connectivity.
-- `--json` emits an allowlisted schema, excluding pairing codes and network identity.
+- Status `--json` emits an allowlisted schema; `--show-identity` adds configured ID/name/room.
+- `inspect` reads hardware metadata; `devices` lists inventory; `discover` locates a pinned MAC.
 - Disconnected heat pumps report unknown values instead of cached temperatures.
 
 This is an initial read-only implementation grounded in HomeKit firmware v0.2.5.
@@ -46,20 +47,86 @@ tools: `/usr/local/bin/serinctl` backed by an isolated environment under
 `CTL_INSTALL_PREFIX`, `CTL_VENV_ROOT`, and `CTL_BIN_DIR` support alternate paths.
 Registration in the private `home-config` bootstrap is still pending.
 
-## Private configuration
+## Setup
 
-Copy [the example](config/controller.example.json) to
-`/usr/local/config/serinctl/config.json` with mode `0600`, or select your own
-private file with `SERINCTL_CONFIG` or `--config`:
+1. Follow the manufacturer's [hardware and Wi-Fi setup](https://serin-labs.com/homekit/setup.html).
+   Use a 2.4 GHz network. Confirm the initial IP in the router's client list.
+2. Read the controller's metadata without changing its settings:
+
+   ```bash
+   .venv/bin/serinctl --host 192.0.2.10 inspect --json
+   ```
+
+   This explicitly displays private hardware identity: board, firmware, ESP-IDF,
+   Wi-Fi MAC, IP, and hostname. Confirm the device against its setup card/router
+   before enrolling it. It excludes pairing codes and Wi-Fi credentials.
+3. Copy [the example JSON](config/controller.example.json) into your private
+   configuration repository, or `/usr/local/config/serinctl/config.json`.
+   Use mode `0600`. Replace the sample addresses and MACs with verified values.
+4. Give each controller a stable `id`, a readable `name`, and a `room_id`.
+   Define rooms with stable IDs and readable names in `rooms`. Use `null` for a
+   device whose room is not assigned yet. Multiple controllers may share a room.
+5. Verify the saved target:
+
+   ```bash
+   .venv/bin/serinctl --config /path/to/private/config.json devices
+   .venv/bin/serinctl --config /path/to/private/config.json doctor serin-demo --json
+   .venv/bin/serinctl --config /path/to/private/config.json status serin-demo --show-identity
+   ```
+
+### Configuration fields
+
+| Field | Meaning |
+| --- | --- |
+| `version` | Inventory format version, currently `1` |
+| `rooms` | Room records with stable `id` and editable `name` |
+| `devices[].id` | Locally assigned stable identifier, independent of room/name/IP |
+| `name` | Editable display name |
+| `room_id` | Reference to a room, or `null` |
+| `host` | Last known address, optionally with a port |
+| `hostname` | Optional DNS/mDNS name, normally the reported hostname plus `.local` |
+| `mac` | Optional expected Wi-Fi station MAC, required for verified discovery |
+
+IDs use lowercase letters, numbers, hyphens, and underscores. Device IDs, room
+IDs, and configured hardware MACs must be unique within their respective sets.
+Renaming a device or room does not change its ID. IDs are inventory labels;
+`mac` is the hardware identity check.
+
+An exact device ID is required when multiple controllers exist; with one
+controller it can be omitted. Names and rooms are not implicit target selectors.
+`devices` lists inventory without network traffic. `SERINCTL_CONFIG` or
+`--config` selects a private config. The legacy `{"host": "example.local"}`
+shape still works, without identity verification. `--host` is a direct,
+unverified override and cannot be combined with a configured device ID.
+
+### Find a controller after its IP changes
+
+For MAC-pinned devices, status tries the configured hostname first, then the
+saved address. It checks the `deviceInfo` MAC on the same WebSocket connection
+before returning equipment status. A mismatch refuses the read; missing identity
+never counts as verification. Firmware metadata is self-reported, so this check
+prevents accidental device mix-ups; it is not cryptographic authentication.
 
 ```bash
-.venv/bin/serinctl --config /path/to/private/config.json status --json
+.venv/bin/serinctl --config /path/to/private/config.json discover serin-demo --json
+# If hostname and saved address fail, explicitly search your own LAN:
+.venv/bin/serinctl --config /path/to/private/config.json discover serin-demo --network 192.168.1.0/24 --json
 ```
 
-`--host` overrides configuration. No pairing secret is needed for the local
-WebSocket read. Keep the controller on a trusted LAN: its web interface also
-exposes administrative actions. Raw frames and original setup photos must stay
-private. `serinctl` does not save them or offer raw output.
+Choose the actual private subnet from your network settings. An explicit scan
+probes local port 80 WebSocket endpoints with up to eight concurrent reads and
+at most 256 addresses. It returns only a matching configured MAC. Per-endpoint
+discovery timeout is capped at two seconds; a full scan may take about a minute
+plus connection-close time. Without `--network`, only configured addresses are
+tried. Hostname resolution relies on the operating system's DNS/mDNS support.
+
+Discovery displays private network identity but does not edit files. If exactly
+one controller matches, update `host` in the private config from the verified
+result. Retain the stable ID, MAC, and room. Missing or conflicting results
+require investigation; never select the first responding mini-split.
+
+Keep raw frames and setup photos private: the local web interface also exposes
+administrative actions. No pairing secret is needed for these reads.
 
 ## Output and exit codes
 
@@ -73,8 +140,8 @@ A received snapshot is not proof of sensor freshness or physical operation.
 ## Notes from the bench
 
 The photographed kit contains a Serin Controller and CN105 cable; its label
-states HomeKit-compatible firmware v0.2.5. This establishes the starting
-firmware target, not confirmation of the installed runtime or indoor-unit model.
+states HomeKit-compatible firmware v0.2.5. Runtime metadata also confirms v0.2.5 on an M5Stack NanoC6.
+The indoor-unit model and connected CN105 telemetry remain unverified.
 See [hardware notes](docs/hardware.md), [protocol](docs/protocol.md),
 [setup troubleshooting](docs/troubleshooting.md), and [roadmap](docs/roadmap.md).
 
