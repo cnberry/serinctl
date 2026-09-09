@@ -1,8 +1,9 @@
 # Roadmap
 
-1. **First read:** finish Wi-Fi commissioning, confirm installed firmware and
-   indoor-unit model, validate status against the local web app, and retain only
-   sanitized fixtures.
+1. **Connected equipment:** Wi-Fi commissioning and initial disconnected-CN105
+   reads are verified. Confirm installed firmware and indoor-unit model, establish
+   CN105 connectivity, and validate telemetry against the local web app.
+   Retain only sanitized fixtures.
 2. **Private deployment:** register `serinctl` with the home-config bootstrap
    and place the actual target outside this public repository.
 3. **Deliberate controls:** exact target, current connected state, explicit

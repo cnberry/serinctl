@@ -25,5 +25,9 @@ Future control: upstream `cmd: set` may immediately broadcast wanted values
 before hardware acknowledges them. A matching echo alone cannot establish a
 successful physical write. Resolve confirmation semantics before adding writes.
 
-No live-device response has been validated yet. Label and source inspection
-are evidence for implementation, not a claim of tested hardware compatibility.
+Live read-only validation on 2026-09-08 received a state frame from a physical
+Serin controller after Wi-Fi commissioning. Both direct target selection and
+private configuration worked. The controller reported CN105 disconnected;
+the CLI returned exit 2 and null equipment values. No application commands
+were sent. Connected heat-pump telemetry and runtime firmware identity remain
+unverified. Device identity and network details belong in private home-config.

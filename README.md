@@ -21,7 +21,8 @@ equipment state.
 - Disconnected heat pumps report unknown values instead of cached temperatures.
 
 This is an initial read-only implementation grounded in HomeKit firmware v0.2.5.
-Live validation is pending Wi-Fi setup. ESPHome and Matter firmware are not
+Live reads have verified controller reachability and the disconnected-CN105
+response. Connected heat-pump telemetry is still unverified. ESPHome and Matter firmware are not
 supported by this adapter. Power, mode, setpoint, fan, and vane writes are roadmap
 work; this release sends no application commands to the controller.
 
