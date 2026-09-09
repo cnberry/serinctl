@@ -1,16 +1,19 @@
 # Roadmap
 
-1. **Connected equipment:** Wi-Fi commissioning and initial disconnected-CN105
-   reads are verified. Runtime firmware is verified as v0.2.5. Confirm indoor-unit model, establish
-   CN105 connectivity, and validate telemetry against the local web app.
-   Retain only sanitized fixtures.
-2. **Private deployment:** register `serinctl` with the home-config bootstrap
-   using the native inventory already stored outside this public repository.
-3. **Deliberate controls:** exact target, current connected state, explicit
-   `--yes`, validated temperature/mode limits, bounded confirmation, and readback
-   that distinguishes wanted settings from acknowledged CN105 state.
-4. **More comfort:** fan and vane support, optional Fahrenheit presentation,
-   and richer freshness reporting. Named multi-device inventory, rooms, and
-   MAC-verified rediscovery are implemented.
+Version 0.3.0 implements the [everyday commands](commands.md): heat, cool, temp,
+status, watch, power/mode/fan/vanes, combined set, capabilities, and inventory.
+All use Python plus the existing local WebSocket transport.
 
-ESPHome and Matter would be separate adapters with their own evidence and tests.
+1. Validate authorized comfort changes on the installed indoor unit, including
+   its actual supported modes, vane settings, and temperature precision.
+2. Review the staged private home-config kitchen dial before merging and deploying.
+3. Improve hardware confirmation if upstream exposes a settings-sample sequence
+   or CN105 acknowledgment; current matching readback retains acknowledgment unknown.
+
+Wi-Fi commissioning and connected/disconnected reads are verified on HomeKit
+v0.2.5. Control writes have only simulated transport tests so far. Retain only
+sanitized evidence from future live validation.
+
+Administration belongs to Codex's direct workflows. Sensors, firmware, pairing,
+Wi-Fi, resets, presets, timers, and schedules stay outside the CLI. ESPHome and
+Matter would require separate adapters with their own evidence and tests.

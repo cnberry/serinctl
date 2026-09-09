@@ -4,11 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "serinctl"
-version = "0.2.0"
-description = "Tiny local Serin mini-split inspection CLI"
+version = "0.3.0"
+description = "Tiny local Serin mini-split comfort controls"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.txt"]
 authors = [{name = "Chris Berry"}]
 dependencies = ["websockets>=15,<16"]
 

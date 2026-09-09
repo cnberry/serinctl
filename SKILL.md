@@ -1,6 +1,6 @@
 ---
 name: serinctl
-description: Set up private Serin CN105 controller inventory, inspect local HomeKit firmware, and find registered controllers after address changes.
+description: Control everyday Serin CN105 comfort settings, watch local equipment state, and maintain private controller inventory.
 ---
 
 ## Setup
@@ -39,8 +39,26 @@ The MAC is self-reported, not cryptographic authentication.
 
 ## Boundaries
 
-The current release is read-only and targets HomeKit v0.2.5. Live reads verified
-hardware metadata and disconnected-CN105 handling; connected equipment telemetry
-remains unverified. Do not claim writes, ESPHome, or Matter support. Send no
-arbitrary WebSocket commands. Preserve unknown values and nonzero exit codes.
-Raw frames contain pairing secrets; use only the CLI's allowlisted output.
+Keep the CLI focused on everyday operations with minimal external dependencies.
+The [agreed command plan](docs/commands.md) prioritizes heat, cool, temp, status,
+and watch, with the accepted supporting inspection and airflow commands.
+Controller administration is handled
+directly by Codex when requested; do not expand this CLI into firmware, pairing,
+Wi-Fi, sensor management, presets, timers, or schedules.
+
+Version 0.3.0 targets HomeKit v0.2.5. Reads have been verified on hardware;
+control writes have simulated coverage but remain unverified on live equipment.
+Use exact registered IDs with pinned MACs for writes. `heat ID --temp 71 --unit F
+--yes`, `cool`, and `temp` share validation. `--dry-run` checks a proposed change
+without sending it. Use `--yes` for a change already authorized by the user;
+do not ask them to approve it again. Never actuate equipment as an automated test.
+
+Fahrenheit setpoints use Mitsubishi's table; do not independently convert them.
+AUTO rejects a single target; choose heat/cool explicitly. Preserve all
+unspecified settings. Readback matching after the optimistic grace period is
+not proof of hardware acknowledgment. Exit 3 is uncertain: inspect fresh status
+before considering another change, and never automatically repeat a write.
+
+Do not claim ESPHome or Matter support. Send no arbitrary WebSocket commands.
+Preserve unknown values and nonzero exit codes. Raw frames contain pairing
+secrets; use only the CLI's allowlisted output.
