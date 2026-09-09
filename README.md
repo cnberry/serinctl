@@ -8,24 +8,54 @@
 >
 > Check the room. Know the state. Keep your cool.
 
-`serinctl` is a small Python CLI for inspecting a Serin Labs CN105 mini-split
+`serinctl` is a small Python CLI for controlling and inspecting a Serin Labs CN105 mini-split
 controller over the local network. Same little-robot energy as `poolctl` and
 `gatectl`: small commands, private configuration, readable output, and honest
 equipment state.
 
-## First batch: inspection
+## Firmware attribution
 
-- `status` reads one equipment snapshot from the HomeKit firmware's `/ws` stream.
-- `doctor` performs the same read to check controller and CN105 connectivity.
-- Status `--json` emits an allowlisted schema; `--show-identity` adds configured ID/name/room.
-- `inspect` reads hardware metadata; `devices` lists inventory; `discover` locates a pinned MAC.
-- Disconnected heat pumps report unknown values instead of cached temperatures.
+Thanks to [Serin Labs](https://serin-labs.com/) for the Serin controller and
+the firmware distribution, setup guides, and local interface this CLI builds on.
+The current adapter targets HomeKit firmware v0.2.5 distributed through
+[Serin Labs' firmware repository](https://github.com/Serin-Labs/serin-cn105).
+That firmware is built from
+[Mitsubishi CN105 HomeKit Controller](https://github.com/akifbayram/mitsubishi-cn105-homekit/tree/v0.2.5),
+by Mehmet Bayram and contributors, whose firmware source is MIT-licensed.
 
-This is an initial read-only implementation grounded in HomeKit firmware v0.2.5.
-Live reads have verified controller reachability and the disconnected-CN105
-response. Connected heat-pump telemetry is still unverified. ESPHome and Matter firmware are not
-supported by this adapter. Power, mode, setpoint, fan, and vane writes are roadmap
-work; this release sends no application commands to the controller.
+`serinctl` supplies the command-line client. Credit for the controller firmware,
+CN105 implementation, and HomeKit integration belongs to the upstream projects
+and their contributors.
+
+## Everyday comfort
+
+```bash
+serinctl status serin-demo --unit F
+serinctl heat serin-demo --temp 71 --unit F --yes
+serinctl cool serin-demo --temp 74 --unit F --yes
+serinctl temp serin-demo 72 --unit F --yes
+serinctl watch serin-demo --unit F
+```
+
+The primary commands are **heat, cool, temp, status, and watch**. Supporting
+commands cover power, mode, fan, both vane directions, combined settings,
+capabilities, inventory, and discovery. See the [command reference](docs/commands.md).
+Runtime dependencies remain Python and `websockets`; routine use needs no Codex,
+cloud account, browser, or background service.
+
+Controls target an exact registered ID with a pinned MAC and HomeKit firmware
+v0.2.5. Add `--dry-run` to validate a requested change without sending it; use
+`--yes` to execute. Heat/cool without `--temp` preserve the target. `temp`
+preserves power and mode; AUTO requires choosing heat or cool first because the
+firmware manages its own automatic thresholds. Administration, pairing, sensors,
+presets, timers, and schedules stay outside this CLI.
+
+Writes wait for bounded readback beyond the firmware's minimum optimistic
+grace period. A match is reported as **post-grace readback matched**, with hardware
+acknowledgment unknown. Uncertain writes are never automatically replayed.
+Live connected/disconnected reads are verified; control writes have only been
+validated against pinned firmware source and simulated transport so far.
+ESPHome and Matter are not supported by this adapter.
 
 ## Get cooking
 
@@ -45,7 +75,7 @@ For an installed copy, `./script/install` uses the same contract as sibling
 tools: `/usr/local/bin/serinctl` backed by an isolated environment under
 `/usr/local/lib/home-config/ctls/serinctl`. It may require elevated permissions.
 `CTL_INSTALL_PREFIX`, `CTL_VENV_ROOT`, and `CTL_BIN_DIR` support alternate paths.
-Registration in the private `home-config` bootstrap is still pending.
+Private deployment configuration stays in `home-config`.
 
 ## Setup
 
@@ -85,15 +115,16 @@ Registration in the private `home-config` bootstrap is still pending.
 | `room_id` | Reference to a room, or `null` |
 | `host` | Last known address, optionally with a port |
 | `hostname` | Optional DNS/mDNS name, normally the reported hostname plus `.local` |
-| `mac` | Optional expected Wi-Fi station MAC, required for verified discovery |
+| `mac` | Expected Wi-Fi station MAC, required for controls and verified discovery |
 
 IDs use lowercase letters, numbers, hyphens, and underscores. Device IDs, room
 IDs, and configured hardware MACs must be unique within their respective sets.
 Renaming a device or room does not change its ID. IDs are inventory labels;
 `mac` is the hardware identity check.
 
-An exact device ID is required when multiple controllers exist; with one
-controller it can be omitted. Names and rooms are not implicit target selectors.
+Reads require an exact device ID when multiple controllers exist; with one
+controller it can be omitted. Controls always require an exact registered ID
+and pinned MAC. Names and rooms are not implicit target selectors.
 `devices` lists inventory without network traffic. `SERINCTL_CONFIG` or
 `--config` selects a private config. The legacy `{"host": "example.local"}`
 shape still works, without identity verification. `--host` is a direct,
@@ -130,18 +161,34 @@ administrative actions. No pairing secret is needed for these reads.
 
 ## Output and exit codes
 
-Temperatures are Celsius, matching the firmware transport irrespective of its
-web display preference. `controller_reachable` is distinct from
-`heat_pump_connected`. Exit `0` means connected equipment state was received,
-`1` means configuration, transport, or protocol failure, and `2` means the
-controller reports CN105 disconnected (also used by argparse for invalid usage).
-A received snapshot is not proof of sensor freshness or physical operation.
+JSON preserves canonical Celsius fields and adds Fahrenheit display fields.
+Targets use Mitsubishi's firmware lookup table, while measured room temperature
+uses physical conversion. Use `--unit F` for Fahrenheit input or human output;
+Celsius is the default. Valid targets are 16–30.5°C in 0.5° steps or 61–88°F in
+whole degrees. `target_f_exact` distinguishes an exact table match from a
+fallback display for a Celsius target outside that table.
+
+`controller_reachable` is distinct from `heat_pump_connected`. A received
+snapshot proves neither sensor freshness nor physical operation.
+
+| Exit | Meaning |
+| --- | --- |
+| `0` | Connected read, validated dry run, or post-grace readback match. |
+| `1` | Configuration, preflight, transport, or protocol failure before control execution. |
+| `2` | CN105 disconnected on reads, or invalid CLI usage. |
+| `3` | Control attempted; result unconfirmed. Refresh before deciding on another change. |
+
+Control JSON separates `requested`, `before`, `after`, `command_attempted`,
+`command_sent`, `outcome`, and `verification`. `hardware_acknowledged` remains
+null even when the readback matches. `--wait` bounds observation (20 seconds by
+default); `--wait 0` sends once and immediately returns unconfirmed.
 
 ## Notes from the bench
 
 The photographed kit contains a Serin Controller and CN105 cable; its label
 states HomeKit-compatible firmware v0.2.5. Runtime metadata also confirms v0.2.5 on an M5Stack NanoC6.
-The indoor-unit model and connected CN105 telemetry remain unverified.
+Connected CN105 telemetry is verified; the indoor-unit model and control-write
+confirmation remain unverified.
 See [hardware notes](docs/hardware.md), [protocol](docs/protocol.md),
 [setup troubleshooting](docs/troubleshooting.md), and [roadmap](docs/roadmap.md).
 
@@ -151,7 +198,7 @@ See [hardware notes](docs/hardware.md), [protocol](docs/protocol.md),
 - [poolctl](https://github.com/cnberry/poolctl) — pool equipment.
 - [hottubctl](https://github.com/cnberry/hottubctl) — hot tub inspection.
 - [switchctl](https://github.com/cnberry/switchctl) — named local switches.
-- [serinctl](https://github.com/cnberry/serinctl) — local mini-split inspection.
+- [serinctl](https://github.com/cnberry/serinctl) — local mini-split comfort controls.
 
 ## Development
 
@@ -167,5 +214,6 @@ Python 3.11–3.13.
 ## License
 
 [MIT](LICENSE). Independent project, not affiliated with Serin Labs or
-Mitsubishi Electric. Protocol research references the MIT-licensed
-[upstream HomeKit firmware](https://github.com/akifbayram/mitsubishi-cn105-homekit/tree/v0.2.5).
+Mitsubishi Electric. See [Firmware attribution](#firmware-attribution) for
+Serin Labs and upstream firmware credits. The adapted temperature lookup's
+[upstream MIT notice](THIRD_PARTY_NOTICES.txt) ships with this package.

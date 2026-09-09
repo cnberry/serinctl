@@ -1,5 +1,11 @@
 # Local HomeKit transport
 
+The current controller firmware is provided through
+[Serin Labs](https://github.com/Serin-Labs/serin-cn105), using the
+MIT-licensed HomeKit firmware by Mehmet Bayram and contributors. `serinctl`
+implements a client for that existing interface. See the
+[firmware credits](../README.md#firmware-attribution).
+
 Reference: [firmware v0.2.5](https://github.com/akifbayram/mitsubishi-cn105-homekit/tree/c4f9088789e30eba2f7cadb92622c21d23370a86),
 especially `main/web_server.cpp` and `main/web_ws.cpp`.
 The manufacturer manifest inspected at
@@ -9,7 +15,7 @@ also lists stable 0.2.5.
 The HTTP server registers `/ws`. A WebSocket handshake triggers state and device
 information; periodic state pushes follow. `serinctl` receives until a
 `type: state` frame arrives under a bounded deadline, without sending application
-messages. WebSocket protocol handshake/close frames still occur.
+messages during reads. WebSocket protocol handshake/close frames still occur.
 
 The state contains `connected`, `power`, `mode`, `target`, `room`, `operating`,
 and compressor diagnostics. Target and room temperatures come directly from
@@ -21,16 +27,47 @@ and potentially location/sensor identity. Output is a fixed allowlist with
 typed values, not a blacklist. Unknown modes are null, preventing arbitrary
 device strings from passing into output.
 
-Future control: upstream `cmd: set` may immediately broadcast wanted values
-before hardware acknowledges them. A matching echo alone cannot establish a
-successful physical write. Resolve confirmation semantics before adding writes.
+## Control and readback
+
+Controls use one narrow `cmd: set` frame containing only requested settings,
+after same-connection MAC verification, firmware v0.2.5 checking, a newly
+received connected state, and validation against configured permissions.
+Firmware `modeMask`/`vaneConfig` describe configured options, not measured unit
+capabilities. Target bounds are 16–30.5°C with half-degree steps; the old integer
+CN105 encoding can truncate half degrees and its precision is not exposed.
+AUTO actively derives its target from saved thresholds, so standalone target
+writes in final AUTO mode are rejected.
+
+Upstream `getEffectiveState()` broadcasts wanted settings for 10 seconds after
+a setter; these are optimistic values. Observation anchors its grace timer at
+the first matching echo, consumes intervening frames, checks controller uptime
+has advanced beyond grace, then requires two distinct later matching frames.
+The result is `readback_match`, never hardware acknowledgment. Other clients can
+restart firmware grace, and `connected` can persist without a fresh settings
+sample. The WebSocket interface exposes no sample timestamp or explicit CN105
+ACK, so `hardware_acknowledged` remains null.
+
+A send attempt is never automatically retried or replayed on another address.
+Interruption, mismatch, malformed data, disconnect, or expiration yields an
+unconfirmed result. No background service is involved.
+
+Canonical transport targets stay Celsius regardless of `tempUnit`.
+Fahrenheit input/display uses the lookup in
+[`main/sl2_proto.h`](https://github.com/akifbayram/mitsubishi-cn105-homekit/blob/c4f9088789e30eba2f7cadb92622c21d23370a86/main/sl2_proto.h),
+not ordinary physical conversion (71°F maps to 22°C). Room readings do use
+physical conversion. The adapted table's MIT notice ships with the client.
 
 Live read-only validation on 2026-09-08 received a state frame from a physical
 Serin controller after Wi-Fi commissioning. Both direct target selection and
 private configuration worked. The controller reported CN105 disconnected;
 the CLI returned exit 2 and null equipment values. No application commands
 were sent. A later allowlisted deviceInfo read confirmed an M5Stack NanoC6 running
-v0.2.5 (ESP-IDF v5.5.4). Connected heat-pump telemetry remains unverified. Device identity and network details belong in private home-config.
+v0.2.5 (ESP-IDF v5.5.4). After the user attached CN105 to the AC unit, a further
+read returned connected equipment telemetry: power on, cooling mode, room and
+target temperatures, operating state, and compressor frequency. The CLI returned
+exit 0. This verifies the connected read path, not write acknowledgement or
+independent sensor accuracy. Device identity and network details belong in
+private home-config.
 
 
 ## Identity and discovery
