@@ -46,8 +46,9 @@ Controller administration is handled
 directly by Codex when requested; do not expand this CLI into firmware, pairing,
 Wi-Fi, sensor management, presets, timers, or schedules.
 
-Version 0.3.0 targets HomeKit v0.2.5. Reads have been verified on hardware;
-control writes have simulated coverage but remain unverified on live equipment.
+Version 0.3.1 targets HomeKit v0.2.5. Reads and cooling activation with matching
+post-grace readback have been verified on hardware. Upgrade 0.3.0 before using
+controls: its spaced JSON was silently ignored by the firmware's string parser.
 Use exact registered IDs with pinned MACs for writes. `heat ID --temp 71 --unit F
 --yes`, `cool`, and `temp` share validation. `--dry-run` checks a proposed change
 without sending it. Use `--yes` for a change already authorized by the user;

@@ -57,6 +57,7 @@ class Socket:
         self.clock = clock
         self.events = list(events)
         self.sent = []
+        self.sent_text = []
         self.send_error = send_error
 
     def __enter__(self):
@@ -77,6 +78,7 @@ class Socket:
         return json.dumps(frame) if not isinstance(frame, str) else frame
 
     def send(self, payload):
+        self.sent_text.append(payload)
         self.sent.append(json.loads(payload))
         if self.send_error:
             raise self.send_error
@@ -162,6 +164,30 @@ class TransportControls(unittest.TestCase):
         ):
             result = apply_settings(DEVICE, requested or {"power": True}, **kwargs)
         return result, ws, connect
+
+    def test_wire_text_matches_firmware_compact_string_parser(self):
+        # v0.2.5 main/json_utils.h jsonGetString searches for '"key":"'.
+        # Parsing sent JSON back into a dict hides whitespace that makes the
+        # controller ignore "cmd" (and therefore every requested setting).
+        _, ws, _ = self.exercise(
+            [],
+            requested={
+                "power": True,
+                "mode": "cool",
+                "target_c": 21.5,
+                "fan": "2",
+                "vane": "1",
+                "wide_vane": "swing",
+            },
+            wait=0,
+        )
+        self.assertEqual(
+            ws.sent_text,
+            [
+                '{"cmd":"set","power":true,"mode":"cool","target":21.5,'
+                '"fan":"2","vane":"1","wideVane":"swing"}'
+            ],
+        )
 
     def test_dry_run_never_sends_and_excludes_private_frame_fields(self):
         result, ws, _ = self.exercise(

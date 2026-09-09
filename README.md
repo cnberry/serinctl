@@ -53,8 +53,9 @@ presets, timers, and schedules stay outside this CLI.
 Writes wait for bounded readback beyond the firmware's minimum optimistic
 grace period. A match is reported as **post-grace readback matched**, with hardware
 acknowledgment unknown. Uncertain writes are never automatically replayed.
-Live connected/disconnected reads are verified; control writes have only been
-validated against pinned firmware source and simulated transport so far.
+Live connected/disconnected reads and cooling activation have been verified
+on HomeKit v0.2.5 with post-grace status readback. Use version 0.3.1 or newer:
+0.3.0's JSON formatting caused this firmware to silently ignore commands.
 ESPHome and Matter are not supported by this adapter.
 
 ## Get cooking
@@ -187,8 +188,9 @@ default); `--wait 0` sends once and immediately returns unconfirmed.
 
 The photographed kit contains a Serin Controller and CN105 cable; its label
 states HomeKit-compatible firmware v0.2.5. Runtime metadata also confirms v0.2.5 on an M5Stack NanoC6.
-Connected CN105 telemetry is verified; the indoor-unit model and control-write
-confirmation remain unverified.
+Connected CN105 telemetry and cooling activation with matching post-grace
+readback are verified. The indoor-unit model and full control capabilities
+remain unverified.
 See [hardware notes](docs/hardware.md), [protocol](docs/protocol.md),
 [setup troubleshooting](docs/troubleshooting.md), and [roadmap](docs/roadmap.md).
 

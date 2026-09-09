@@ -24,5 +24,10 @@ the supported firmware shape. Do not dump raw state into a public issue.
 `heat pump disconnected` means the web controller answered but its CN105 link
 is down; temperatures and power are intentionally unknown.
 
+If reads work but every control remains unchanged on v0.3.0, upgrade to v0.3.1
+or newer. The firmware silently ignores commands with spaces after string-field
+colons. Version 0.3.1 sends compact JSON and includes a wire-text regression test.
+After an unconfirmed command, read fresh status before deciding on another change.
+
 Keep the existing firmware during initial setup. The manufacturer's guide also
 offers USB Wi-Fi provisioning without reinstalling firmware.
