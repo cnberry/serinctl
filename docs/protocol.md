@@ -32,6 +32,11 @@ device strings from passing into output.
 Controls use one narrow `cmd: set` frame containing only requested settings,
 after same-connection MAC verification, firmware v0.2.5 checking, a newly
 received connected state, and validation against configured permissions.
+The frame must use compact JSON: firmware `main/json_utils.h` searches for
+string fields using the literal pattern `"key":"`. A space after the colon
+prevents it from recognizing even `cmd`, so otherwise valid JSON is silently
+ignored. Version 0.3.1 fixes this serialization error in 0.3.0. Regression tests
+check the transmitted text rather than only decoding it with a general JSON parser.
 Firmware `modeMask`/`vaneConfig` describe configured options, not measured unit
 capabilities. Target bounds are 16–30.5°C with half-degree steps; the old integer
 CN105 encoding can truncate half degrees and its precision is not exposed.
@@ -69,6 +74,13 @@ exit 0. This verifies the connected read path, not write acknowledgement or
 independent sensor accuracy. Device identity and network details belong in
 private home-config.
 
+Authorized live control validation on 2026-09-08 reproduced the 0.3.0 failure:
+a cooling command was sent but power remained off throughout the readback
+window and a fresh connection. With compact serialization, cooling activation,
+a one-degree Fahrenheit target increase, and power off each returned two
+matching post-grace frames. Independent telemetry also reported operating state
+changes and nonzero compressor frequency while cooling. These observations
+verify these command paths, not every supported mode or a hardware ACK.
 
 ## Identity and discovery
 

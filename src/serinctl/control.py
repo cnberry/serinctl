@@ -161,7 +161,8 @@ def apply_settings(device, requested, timeout=5, wait=20, dry_run=False):
             # Once send is attempted, no exception may trigger endpoint fallback
             # or another send. A failed send may still have reached the unit.
             result["command_attempted"] = True
-            session.ws.send(json.dumps(payload, allow_nan=False))
+            # v0.2.5 jsonGetString requires '"key":"value"' with no spaces.
+            session.ws.send(json.dumps(payload, allow_nan=False, separators=(",", ":")))
             result["command_sent"] = True
             verification["reason"] = "readback_timeout"
             anchor = None

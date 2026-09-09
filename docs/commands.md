@@ -1,6 +1,7 @@
 # Everyday commands
 
-Available in v0.3.0. Commands below use the local HomeKit v0.2.5 interface.
+Available in v0.3.1. Commands below use the local HomeKit v0.2.5 interface.
+Use 0.3.1 or newer: 0.3.0's command formatting was silently ignored by this firmware.
 
 The `*ctl` family prioritizes everyday tasks with minimal external dependencies.
 Keep Python and the existing WebSocket transport sufficient for Serin's routine
@@ -92,4 +93,5 @@ sensor management, display administration, presets, timers, or schedules.
 Named room metadata remains part of the existing private inventory.
 
 All controls share validation and transport. Automated tests use only synthetic
-frames and fake WebSockets; live control writes remain unverified.
+frames and fake WebSockets. Authorized live cooling activation has also returned
+matching post-grace status readback; this does not establish full unit capabilities.

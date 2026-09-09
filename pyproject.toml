@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "serinctl"
-version = "0.3.0"
+version = "0.3.1"
 description = "Tiny local Serin mini-split comfort controls"
 readme = "README.md"
 requires-python = ">=3.11"
